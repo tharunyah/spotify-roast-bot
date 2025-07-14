@@ -137,12 +137,14 @@ def spotify_callback():
         
         if not all([client_id, client_secret, redirect_uri, groq_key]):
             return f"""
+            <html><body style="font-family: Arial; text-align: center; padding: 2rem;">
             <h2>Missing Environment Variables!</h2>
             <p>CLIENT_ID: {'✅' if client_id else '❌'}</p>
             <p>CLIENT_SECRET: {'✅' if client_secret else '❌'}</p>
             <p>REDIRECT_URI: {'✅' if redirect_uri else '❌'}</p>
             <p>GROQ_API_KEY: {'✅' if groq_key else '❌'}</p>
             <a href="/">← Go Back</a>
+            </body></html>
             """
         
         # Exchange code for access token
@@ -170,14 +172,6 @@ def spotify_callback():
         token_json = token_response.json()
         access_token = token_json['access_token']
         
-        # Rest of your code...
-        
-    except Exception as e:
-        print(f"DETAILED ERROR: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return f"Error: {str(e)}", 500
-        
         # Get user's music data
         headers = {'Authorization': f'Bearer {access_token}'}
         
@@ -186,6 +180,10 @@ def spotify_callback():
             'https://api.spotify.com/v1/me/top/tracks?limit=10',
             headers=headers
         )
+        
+        if top_tracks_response.status_code != 200:
+            return f"Error getting top tracks: {top_tracks_response.text}", 400
+        
         top_tracks = top_tracks_response.json()['items']
         
         # Get top artists
@@ -227,6 +225,7 @@ def spotify_callback():
         - Keep it under 200 words
         """
         
+        print("Requesting Groq roast...")
         groq_response = requests.post(
             'https://api.groq.com/openai/v1/chat/completions',
             json={
@@ -244,8 +243,13 @@ def spotify_callback():
                 'temperature': 0.95,
                 'max_tokens': 250
             },
-            headers={'Authorization': f'Bearer {os.environ.get("GROQ_API_KEY")}'}
+            headers={'Authorization': f'Bearer {groq_key}'}
         )
+        
+        print(f"Groq response status: {groq_response.status_code}")
+        
+        if groq_response.status_code != 200:
+            return f"Groq API error: {groq_response.text}", 400
         
         roast = groq_response.json()['choices'][0]['message']['content']
         
@@ -260,15 +264,15 @@ def spotify_callback():
         )
         
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"DETAILED ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return f"""
         <html>
         <body style="font-family: Arial; text-align: center; padding: 2rem;">
-            <h2>💀 Something went wrong! 💀</h2>
-            <p>Even I can't roast what I can't see. Try again!</p>
-            <div style="background: #f0f0f0; padding: 10px; margin: 20px; font-size: 12px;">
-                <strong>Error:</strong> {str(e)}
-            </div>
+            <h2>💀 Debug Error 💀</h2>
+            <p><strong>Error:</strong> {str(e)}</p>
+            <p><strong>Error Type:</strong> {type(e)}</p>
             <a href="/" style="color: #1DB954;">← Go Back</a>
         </body>
         </html>
