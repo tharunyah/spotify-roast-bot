@@ -117,6 +117,7 @@ def spotify_auth():
     return redirect(auth_url)
 
 @app.route('/auth/spotify/callback')
+@app.route('/callback')
 def spotify_callback():
     code = request.args.get('code')
     error = request.args.get('error')
