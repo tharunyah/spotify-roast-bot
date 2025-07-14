@@ -129,22 +129,54 @@ def spotify_callback():
         return "Authorization code not provided", 400
     
     try:
+        # Check environment variables first
+        client_id = os.environ.get('CLIENT_ID')
+        client_secret = os.environ.get('CLIENT_SECRET')
+        redirect_uri = os.environ.get('REDIRECT_URI')
+        groq_key = os.environ.get('GROQ_API_KEY')
+        
+        if not all([client_id, client_secret, redirect_uri, groq_key]):
+            return f"""
+            <h2>Missing Environment Variables!</h2>
+            <p>CLIENT_ID: {'✅' if client_id else '❌'}</p>
+            <p>CLIENT_SECRET: {'✅' if client_secret else '❌'}</p>
+            <p>REDIRECT_URI: {'✅' if redirect_uri else '❌'}</p>
+            <p>GROQ_API_KEY: {'✅' if groq_key else '❌'}</p>
+            <a href="/">← Go Back</a>
+            """
+        
         # Exchange code for access token
         token_data = {
             'grant_type': 'authorization_code',
             'code': code,
-            'redirect_uri': os.environ.get('REDIRECT_URI'),
-            'client_id': os.environ.get('CLIENT_ID'),
-            'client_secret': os.environ.get('CLIENT_SECRET')
+            'redirect_uri': redirect_uri,
+            'client_id': client_id,
+            'client_secret': client_secret
         }
         
+        print("Requesting Spotify token...")
         token_response = requests.post(
             'https://accounts.spotify.com/api/token',
             data=token_data,
             headers={'Content-Type': 'application/x-www-form-urlencoded'}
         )
         
-        access_token = token_response.json()['access_token']
+        print(f"Token response status: {token_response.status_code}")
+        print(f"Token response text: {token_response.text}")
+        
+        if token_response.status_code != 200:
+            return f"Spotify token error: {token_response.text}", 400
+        
+        token_json = token_response.json()
+        access_token = token_json['access_token']
+        
+        # Rest of your code...
+        
+    except Exception as e:
+        print(f"DETAILED ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return f"Error: {str(e)}", 500
         
         # Get user's music data
         headers = {'Authorization': f'Bearer {access_token}'}
